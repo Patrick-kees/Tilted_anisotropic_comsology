@@ -72,9 +72,14 @@ def system(t, y):
 
 # Initial conditions
 N1 = np.sqrt(3)
-R = 3*np.sqrt(1 - (N1**2) / 12)/4
 theta = np.arccos(1/4)
 phi_angles = [-3*np.pi/8]
+
+#Radius factor, keep less then one so it's off the surface initially
+RF=0.8
+
+#Calculating radius component
+R = RF*np.sqrt(1 - (N1**2) / 12)
 
 initial_conditions_list = []
 for phi in phi_angles:
