@@ -34,31 +34,28 @@ def tilted_velocity(sp, sm, sc, no):
     C = 4 * w * (Q)**2
     return (2 * Q) / (A + np.sqrt(np.abs(B - C)))
 
-def q(sp, sm, sc, no):
+def q(sp, sm, sc, no, v):
     Q = Q_three(sc, no)
     O = Omega_fun(sp, sm, sc, no)
-    v_tilt = tilted_velocity(sp, sm, sc, no)
     SigmaSquared = sp**2 + sm**2 + sc**2
-    return 2 * SigmaSquared + 0.5 * (1 + 3*w) * O + 0.5 * (1 - 3*w) * Q * v_tilt
+    return 2 * SigmaSquared + 0.5 * (1 + 3*w) * O + 0.5 * (1 - 3*w) * Q * v
 
 # Differential equations
 def NOE(sp, sm, sc, no, v):
-    return (q(sp, sm, sc, no) - 4 * sp) * no
+    return (q(sp, sm, sc, no, v) - 4*sp)*no
 
 def SPE(sp, sm, sc, no, v):
-    Q = Q_three(sc, no)
-    return (q(sp, sm, sc, no) - 2) * sp - 3 * sc**2 + (no**2)/3 + 0.5 * Q * tilted_velocity(sp, sm, sc, no)
+    O_2 = Omega_fun(sp, sm, sc, no)**2
+    return (q(sp, sm, sc, no, v) - 2)*sp + (no**2)/3 + 0.5*(1+w)/(1+w*(v**2))*O_2*(v**2) +3*sc**2
 
 def SME(sp, sm, sc, no, v):
-    Q = Q_three(sc, no)
-    return (q(sp, sm, sc, no) - 2) * sm - np.sqrt(3) * (sc**2 + 0.5 * Q * tilted_velocity(sp, sm, sc, no))
+    return (q(sp, sm, sc, no, v) - 2)*sm - np.sqrt(3)*sc**2-np.sqrt(0.75)*(1+w)/(1+w*(v**2))*(Omega_fun(sp, sm, sc, no)**2)*(v**2)
 
 def SCE(sp, sm, sc, no, v):
-    return (q(sp, sm, sc, no) - 2 + 3 * sp + np.sqrt(3) * sm) * sc
+    return (q(sp, sm, sc, no,v ) - 2 + 3*sp + np.sqrt(3)*sm)*sc
 
 def VE(sp, sm, sc, no, v):
-    v_tilt = tilted_velocity(sp, sm, sc, no)
-    return (3 * w - 1 - sp + np.sqrt(3) * sm) * (v_tilt - v_tilt**3) / (1 - w * v_tilt**2)
+    return (3 * w - 1 - sp + np.sqrt(3)*sm)*(v - v**3)/(1 - w*v**2)
 
 def system(t, y):
     sp, sm, sc, no, v = y
@@ -71,12 +68,12 @@ def system(t, y):
     ]
 
 # Initial conditions
-N1 = np.sqrt(3)
-theta = np.arccos(1/4)
-phi_angles = [-3*np.pi/8]
+N1 = 1*np.sqrt(3)
+theta = np.arccos(0.2)
+phi_angles = [3*np.pi/8]
 
 #Radius factor, keep less then one so it's off the surface initially
-RF=0.8
+RF=0.5
 
 #Calculating radius component
 R = RF*np.sqrt(1 - (N1**2) / 12)
@@ -92,9 +89,9 @@ for phi in phi_angles:
     #initial_conditions_list.append([-0.44, -0.44, -0.16, 1.73, 0.09])
 
 # Integration settings
-tf = -1000
+tf = -100
 t_span = (0, tf)
-t_eval = np.linspace(0, tf, 50000)
+t_eval = np.linspace(0, tf, 500000)
 
 # Vector field grids
 no_vals, sp_vals = np.meshgrid(np.linspace(0, np.sqrt(12), 25), np.linspace(-1, 1, 25))
