@@ -12,7 +12,7 @@ w = 1/3
 start_time = time.time()
 
 def time_limit_event(t, y):
-    # Stop after 600 seconds (10 minutes)
+    # Stop after 600 seconds (100 minutes)
     if time.time() - start_time > 6000:
         return 0
     return 1
@@ -21,7 +21,8 @@ time_limit_event.terminal = True
 
 # Model functions
 def Q_three(sc, no):
-    return -(no * sc) / np.sqrt(3)
+    Q=-(no * sc) / np.sqrt(3)
+    return Q
 
 def Omega_fun(sp, sm, sc, no):
     return 1 - (sp**2 + sm**2 + sc**2) - (no**2) / 12
@@ -30,26 +31,26 @@ def tilted_velocity(sp, sm, sc, no):
     Q = Q_three(sc, no)
     O = Omega_fun(sp, sm, sc, no)
     A = (1 + w) * O
-    B = ((1 + w)**2) * O**2
+    B = ((1 + w)*O)**2
     C = 4 * w * (Q)**2
     return (2 * Q) / (A + np.sqrt(np.abs(B - C)))
 
 def q(sp, sm, sc, no, v):
     Q = Q_three(sc, no)
     O = Omega_fun(sp, sm, sc, no)
-    SigmaSquared = sp**2 + sm**2 + sc**2
-    return 2 * SigmaSquared + 0.5 * (1 + 3*w) * O + 0.5 * (1 - 3*w) * Q * v
+    return 2*(sp**2 + sm**2 + sc**2) + 0.5*((1 + 3*w)*O + (1 - 3*w)*Q*v)
 
 # Differential equations
 def NOE(sp, sm, sc, no, v):
     return (q(sp, sm, sc, no, v) - 4*sp)*no
 
 def SPE(sp, sm, sc, no, v):
-    O_2 = Omega_fun(sp, sm, sc, no)**2
-    return (q(sp, sm, sc, no, v) - 2)*sp + (no**2)/3 + 0.5*(1+w)/(1+w*(v**2))*O_2*(v**2) +3*sc**2
+    O = Omega_fun(sp, sm, sc, no)
+    return (q(sp, sm, sc, no, v) - 2)*sp + (no**2)/3 -np.sqrt(4/3)*no*sc*O*v + 3*sc**2
 
 def SME(sp, sm, sc, no, v):
-    return (q(sp, sm, sc, no, v) - 2)*sm - np.sqrt(3)*sc**2-np.sqrt(0.75)*(1+w)/(1+w*(v**2))*(Omega_fun(sp, sm, sc, no)**2)*(v**2)
+    O = Omega_fun(sp, sm, sc, no)
+    return (q(sp, sm, sc, no, v) - 2)*sm + np.sqrt(3)*sc**2 + 2*no*sc*O*v
 
 def SCE(sp, sm, sc, no, v):
     return (q(sp, sm, sc, no,v ) - 2 + 3*sp + np.sqrt(3)*sm)*sc
@@ -59,21 +60,24 @@ def VE(sp, sm, sc, no, v):
 
 def system(t, y):
     sp, sm, sc, no, v = y
-    return [
+    derivatives = [
         SPE(sp, sm, sc, no, v),
         SME(sp, sm, sc, no, v),
         SCE(sp, sm, sc, no, v),
         NOE(sp, sm, sc, no, v),
         VE(sp, sm, sc, no, v)
     ]
+    if any(np.isnan(derivatives)) or any(np.isinf(derivatives)):
+        print(f"NaN or Inf detected at t={t}, y={y}")
+    return derivatives
 
 # Initial conditions
 N1 = 1*np.sqrt(3)
-theta = np.arccos(0.2)
-phi_angles = [3*np.pi/8]
+theta = np.arccos(-0.2)
+phi_angles = [-4*np.pi/8]
 
 #Radius factor, keep less then one so it's off the surface initially
-RF=0.5
+RF=0.8
 
 #Calculating radius component
 R = RF*np.sqrt(1 - (N1**2) / 12)
@@ -91,7 +95,7 @@ for phi in phi_angles:
 # Integration settings
 tf = -100
 t_span = (0, tf)
-t_eval = np.linspace(0, tf, 500000)
+t_eval = np.linspace(0, tf, 5000)
 
 # Vector field grids
 no_vals, sp_vals = np.meshgrid(np.linspace(0, np.sqrt(12), 25), np.linspace(-1, 1, 25))
@@ -200,4 +204,4 @@ fig.text(0.7, 0.5, text_str, fontsize=10, va='center', ha='left',
 plt.tight_layout(rect=[0, 0, 0.85, 1])
 plt.show()
 
-#cProfile.run('solve_ivp(system, t_span, initial_conditions_list[0], t_eval=t_eval, method="BDF")')
+#cProfile.run('solve_ivp(system, t_span, initial_conditions_list[0], t_eval=t_eval, method="LSODA")')
