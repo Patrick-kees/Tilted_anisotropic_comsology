@@ -47,18 +47,18 @@ def NOE(sp, sm, sc, no, v):
 
 def SPE(sp, sm, sc, no, v):
     Q = Q_three(sc, no)
-    return (q(sp, sm, sc, no) - 2) * sp - 3 * sc**2 + (no**2)/3 + 0.5 * Q * tilted_velocity(sp, sm, sc, no)
+    return (q(sp, sm, sc, no) - 2)*sp + (no**2)/3 + 0.25*Q*tilted_velocity(sp, sm, sc, no) - 3*sc**2
 
 def SME(sp, sm, sc, no, v):
     Q = Q_three(sc, no)
-    return (q(sp, sm, sc, no) - 2) * sm - np.sqrt(3) * (sc**2 + 0.5 * Q * tilted_velocity(sp, sm, sc, no))
+    return (q(sp, sm, sc, no) - 2)*sm - np.sqrt(3)*(sc**2 + 0.25*Q*tilted_velocity(sp, sm, sc, no))
 
 def SCE(sp, sm, sc, no, v):
-    return (q(sp, sm, sc, no) - 2 + 3 * sp + np.sqrt(3) * sm) * sc
+    return (q(sp, sm, sc, no) - 2 + 3*sp + np.sqrt(3)*sm)*sc
 
 def VE(sp, sm, sc, no, v):
     v_tilt = tilted_velocity(sp, sm, sc, no)
-    return (3 * w - 1 - sp + np.sqrt(3) * sm) * (v_tilt - v_tilt**3) / (1 - w * v_tilt**2)
+    return (3*w - 1 - sp + np.sqrt(3)*sm)*(v_tilt - v_tilt**3)/(1 - w*v_tilt**2)
 
 def system(t, y):
     sp, sm, sc, no, v = y
@@ -74,7 +74,7 @@ def system(t, y):
 N1 = np.sqrt(3)
 R = 3*np.sqrt(1 - (N1**2) / 12)/4
 theta = np.arccos(1/4)
-phi_angles = [-3*np.pi/8]
+phi_angles = [-5*np.pi/8]
 
 initial_conditions_list = []
 for phi in phi_angles:
@@ -87,9 +87,9 @@ for phi in phi_angles:
     #initial_conditions_list.append([-0.44, -0.44, -0.16, 1.73, 0.09])
 
 # Integration settings
-tf = -1000
+tf = -100
 t_span = (0, tf)
-t_eval = np.linspace(0, tf, 50000)
+t_eval = np.linspace(0, tf, 500000)
 
 # Vector field grids
 no_vals, sp_vals = np.meshgrid(np.linspace(0, np.sqrt(12), 25), np.linspace(-1, 1, 25))
