@@ -110,13 +110,15 @@ SME_of_SCE_vals = SME(0, sm_vals, sc_vals, 0, 0)
 SCE_of_SME_vals = SCE(0, sm_vals, sc_vals, 0, 0)
 
 # Create a figure with GridSpec to accommodate 5 subplots
-fig = plt.figure(figsize=(14, 12))
-gs = fig.add_gridspec(3, 2, height_ratios=[1, 1, 0.8])
+fig = plt.figure(figsize=(14, 16))
+gs = fig.add_gridspec(7, 2, height_ratios=[1, 1, 0.8, 0.8, 0.8, 0.8, 0.8])
 ax1 = fig.add_subplot(gs[0, 0])
 ax2 = fig.add_subplot(gs[0, 1])
 ax3 = fig.add_subplot(gs[1, 0])
 ax4 = fig.add_subplot(gs[1, 1])
 ax5 = fig.add_subplot(gs[2, :])
+ax6 = fig.add_subplot(gs[3, :])
+ax7 = fig.add_subplot(gs[4, :])
 
 # (no, sp) vector field in ax1
 ax1.quiver(sp_vals, no_vals, SPE_of_NOE_vals, NOE_of_SPE_vals)
@@ -188,6 +190,18 @@ ax5.set_ylabel("Component values")
 ax5.grid()
 # Place the legend outside the plot on the right
 ax5.legend(loc='upper left', bbox_to_anchor=(1.02, 1))
+
+# Sixth subplot: Omega_fun as a function of time in ax7
+for i, ic in enumerate(initial_conditions_list):
+    solution = solve_ivp(system, t_span, ic, t_eval=t_eval, events=time_limit_event, method='LSODA')
+    Omega_values = Omega_fun(solution.y[0], solution.y[1], solution.y[2], solution.y[3])
+    log_Omega = np.log10(np.abs(Omega_values))  
+    ax6.plot(solution.t, log_Omega, label=f"Density")
+ax6.set_title("Log of Density vs Time")
+ax6.set_xlabel("Time")
+ax6.set_ylabel(r"Log$_{10}$ of Density")
+ax6.grid()
+ax6.legend(loc='upper left', bbox_to_anchor=(1.02, 1))
 
 # Display initial conditions off to the side of the plot
 text_str = "\n\n\n".join([f"IC {i+1}: SPI={ic[0]:.2f}, SMI={ic[1]:.2f}, SCI={ic[2]:.2f}, N1={ic[3]:.2f}, VI={ic[4]:.2f}" 
