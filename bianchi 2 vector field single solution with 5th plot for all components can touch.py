@@ -110,7 +110,7 @@ SME_of_SCE_vals = SME(0, sm_vals, sc_vals, 0, 0)
 SCE_of_SME_vals = SCE(0, sm_vals, sc_vals, 0, 0)
 
 # Create a figure with GridSpec to accommodate 5 subplots
-fig = plt.figure(figsize=(14, 16))
+fig = plt.figure(figsize=(14, 32))
 gs = fig.add_gridspec(7, 2, height_ratios=[1, 1, 0.8, 0.8, 0.8, 0.8, 0.8])
 ax1 = fig.add_subplot(gs[0, 0])
 ax2 = fig.add_subplot(gs[0, 1])
@@ -191,7 +191,7 @@ ax5.grid()
 # Place the legend outside the plot on the right
 ax5.legend(loc='upper left', bbox_to_anchor=(1.02, 1))
 
-# Sixth subplot: Omega_fun as a function of time in ax7
+# Sixth subplot: Omega_fun as a function of time in ax6
 for i, ic in enumerate(initial_conditions_list):
     solution = solve_ivp(system, t_span, ic, t_eval=t_eval, events=time_limit_event, method='LSODA')
     Omega_values = Omega_fun(solution.y[0], solution.y[1], solution.y[2], solution.y[3])
@@ -203,13 +203,30 @@ ax6.set_ylabel(r"Log$_{10}$ of Density")
 ax6.grid()
 ax6.legend(loc='upper left', bbox_to_anchor=(1.02, 1))
 
-# Display initial conditions off to the side of the plot
-text_str = "\n\n\n".join([f"IC {i+1}: SPI={ic[0]:.2f}, SMI={ic[1]:.2f}, SCI={ic[2]:.2f}, N1={ic[3]:.2f}, VI={ic[4]:.2f}" 
+# Seventh subplot: Diffrence of Q3 definitions
+for i, ic in enumerate(initial_conditions_list):
+    solution = solve_ivp(system, t_span, ic, t_eval=t_eval, events=time_limit_event, method='LSODA')
+    
+    v_tilt = tilted_velocity(solution.y[0], solution.y[1], solution.y[2], solution.y[3])
+    O = Omega_fun(solution.y[0], solution.y[1], solution.y[2], solution.y[3])
+    v_def = (1+w)/(1+w*v_tilt**2)*O*v_tilt
+
+    Difference = np.abs(Q_three(solution.y[2], solution.y[3]) - v_def)
+    log_difference = np.log10(Difference)
+    ax7.plot(solution.t, log_difference, label=f"Q difference")
+ax7.set_title("Log of Difference between Qs vs Time")
+ax7.set_xlabel("Time")
+ax7.set_ylabel(r"Difference in $Q_3$ definitions")
+ax7.grid()
+ax7.legend(loc='upper left', bbox_to_anchor=(1.02, 1))
+
+# Display initial conditions at the top of the plot
+text_str = "\n\n".join([f"IC {i+1}: SPI={ic[0]:.2f}, SMI={ic[1]:.2f}, SCI={ic[2]:.2f}, N1={ic[3]:.2f}, VI={ic[4]:.2f}" 
                       for i, ic in enumerate(initial_conditions_list)])
-fig.text(0.7, 0.5, text_str, fontsize=10, va='center', ha='left',
+fig.text(0.5, 0.95, text_str, fontsize=20, va='top', ha='center',
          bbox=dict(facecolor='lightgreen', alpha=0.5))
 
-plt.tight_layout(rect=[0, 0, 0.85, 1])
+plt.tight_layout(rect=[0, 0, 1, 0.9])
 plt.show()
 
 #cProfile.run('solve_ivp(system, t_span, initial_conditions_list[0], t_eval=t_eval, method="BDF")')
