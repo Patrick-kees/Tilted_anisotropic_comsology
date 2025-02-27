@@ -7,7 +7,6 @@ import cProfile
 # Constants
 w = 1/3
 
-
 # Start the timer for the event
 start_time = time.time()
 
@@ -71,10 +70,10 @@ def system(t, y):
     ]
 
 # Initial conditions
-N1 = np.sqrt(3)
+N1 = 0.7*np.sqrt(3)
 R = 3*np.sqrt(1 - (N1**2) / 12)/4
 theta = np.arccos(1/4)
-phi_angles = [-5*np.pi/8]
+phi_angles = [-3*np.pi/8]
 
 initial_conditions_list = []
 for phi in phi_angles:
@@ -84,7 +83,6 @@ for phi in phi_angles:
     VI = tilted_velocity(SPI, SMI, SCI, N1)
     
     initial_conditions_list.append([SPI, SMI, SCI, N1, VI])
-    #initial_conditions_list.append([-0.44, -0.44, -0.16, 1.73, 0.09])
 
 # Integration settings
 tf = -100
@@ -109,6 +107,9 @@ SCE_of_SPE_vals = SCE(sp_vals, 0, sc_vals, 0, 0)
 SME_of_SCE_vals = SME(0, sm_vals, sc_vals, 0, 0)
 SCE_of_SME_vals = SCE(0, sm_vals, sc_vals, 0, 0)
 
+# Solve the system once for each initial condition and store the results
+solutions = [solve_ivp(system, t_span, ic, t_eval=t_eval, events=time_limit_event, method='LSODA') for ic in initial_conditions_list]
+
 # Create a figure with GridSpec to accommodate 5 subplots
 fig = plt.figure(figsize=(14, 32))
 gs = fig.add_gridspec(7, 2, height_ratios=[1, 1, 0.8, 0.8, 0.8, 0.8, 0.8])
@@ -122,8 +123,7 @@ ax7 = fig.add_subplot(gs[4, :])
 
 # (no, sp) vector field in ax1
 ax1.quiver(sp_vals, no_vals, SPE_of_NOE_vals, NOE_of_SPE_vals)
-for i, ic in enumerate(initial_conditions_list):
-    solution = solve_ivp(system, t_span, ic, t_eval=t_eval, events=time_limit_event, method='LSODA')
+for i, solution in enumerate(solutions):
     sp_sol, no_sol = solution.y[0], solution.y[3]
     ax1.plot(sp_sol, no_sol, label=f"IC {i+1}")
 ax1.set_title(r'$(\Sigma_+,0,0,N_1,0)\quad w=0, \quad N_1=\sqrt{3}$')
@@ -133,8 +133,7 @@ ax1.grid()
 
 # (sp, sm) vector field in ax2
 ax2.quiver(sp_vals, sm_vals, SPE_of_SME_vals, SME_of_SPE_vals)
-for i, ic in enumerate(initial_conditions_list):
-    solution = solve_ivp(system, t_span, ic, t_eval=t_eval, events=time_limit_event, method='LSODA')
+for i, solution in enumerate(solutions):
     sp_sol, sm_sol = solution.y[0], solution.y[1]
     ax2.plot(sp_sol, sm_sol, label=f"IC {i+1}")
     ax2.text(sp_sol[0] + 0.05, sm_sol[0] + 0.02, f'IC {i+1}', fontsize=9,
@@ -146,8 +145,7 @@ ax2.grid()
 
 # (sm, no) vector field in ax3
 ax3.quiver(sm_vals, no_vals, SME_of_NOE_vals, NOE_of_SME_vals)
-for i, ic in enumerate(initial_conditions_list):
-    solution = solve_ivp(system, t_span, ic, t_eval=t_eval, events=time_limit_event, method='LSODA')
+for i, solution in enumerate(solutions):
     sm_sol, no_sol = solution.y[1], solution.y[3]
     ax3.plot(sm_sol, no_sol, label=f"IC {i+1}")
 ax3.set_title(r'$(0, \Sigma_-,0,N_1,0),\quad w=0, \quad N_1=\sqrt{3}$')
@@ -157,8 +155,7 @@ ax3.grid()
 
 # (sc, no) vector field in ax4
 ax4.quiver(sc_vals, no_vals, SCE_of_NOE_vals, NOE_of_SCE_vals)
-for i, ic in enumerate(initial_conditions_list):
-    solution = solve_ivp(system, t_span, ic, t_eval=t_eval, events=time_limit_event, method='LSODA')
+for i, solution in enumerate(solutions):
     sc_sol, no_sol = solution.y[2], solution.y[3]
     ax4.plot(sc_sol, no_sol, label=f"IC {i+1}")
 ax4.set_title(r'$(0,0,\Sigma_C,N_1,0),\quad w=0, \quad N_1=\sqrt{3}$')
@@ -169,8 +166,7 @@ ax4.grid()
 # Fifth subplot: Time evolution of each solution component in ax5
 # Use the first initial condition to define the colors for each component.
 handles = {}
-for i, ic in enumerate(initial_conditions_list):
-    solution = solve_ivp(system, t_span, ic, t_eval=t_eval, events=time_limit_event, method='LSODA')
+for i, solution in enumerate(solutions):
     if i == 0:
         line_sp, = ax5.plot(solution.t, solution.y[0], label="sp")
         line_sm, = ax5.plot(solution.t, solution.y[1], label="sm")
@@ -192,8 +188,7 @@ ax5.grid()
 ax5.legend(loc='upper left', bbox_to_anchor=(1.02, 1))
 
 # Sixth subplot: Omega_fun as a function of time in ax6
-for i, ic in enumerate(initial_conditions_list):
-    solution = solve_ivp(system, t_span, ic, t_eval=t_eval, events=time_limit_event, method='LSODA')
+for i, solution in enumerate(solutions):
     Omega_values = Omega_fun(solution.y[0], solution.y[1], solution.y[2], solution.y[3])
     log_Omega = np.log10(np.abs(Omega_values))  
     ax6.plot(solution.t, log_Omega, label=f"Density")
@@ -203,10 +198,8 @@ ax6.set_ylabel(r"Log$_{10}$ of Density")
 ax6.grid()
 ax6.legend(loc='upper left', bbox_to_anchor=(1.02, 1))
 
-# Seventh subplot: Diffrence of Q3 definitions
-for i, ic in enumerate(initial_conditions_list):
-    solution = solve_ivp(system, t_span, ic, t_eval=t_eval, events=time_limit_event, method='LSODA')
-    
+# Seventh subplot: Difference of Q3 definitions
+for i, solution in enumerate(solutions):
     v_tilt = tilted_velocity(solution.y[0], solution.y[1], solution.y[2], solution.y[3])
     O = Omega_fun(solution.y[0], solution.y[1], solution.y[2], solution.y[3])
     v_def = (1+w)/(1+w*v_tilt**2)*O*v_tilt
