@@ -57,7 +57,7 @@ def SCE(sp, sm, sc, no, v):
 
 def VE(sp, sm, sc, no, v):
     v_tilt = tilted_velocity(sp, sm, sc, no)
-    return (3*w - 1 - sp + np.sqrt(3)*sm)*(v_tilt - v_tilt**3)/(1 - w*v_tilt**2)
+    return v_tilt*(3*w - 1 - sp + np.sqrt(3)*sm)*(1 - v_tilt**2)/(1 - w*v_tilt**2)
 
 def system(t, y):
     sp, sm, sc, no, v = y
@@ -71,7 +71,8 @@ def system(t, y):
 
 # Initial conditions
 N1 = 0.7*np.sqrt(3)
-R = 3*np.sqrt(1 - (N1**2) / 12)/4
+RF=0.75
+R = RF*np.sqrt(1 - (N1**2) / 12)
 theta = np.arccos(1/4)
 phi_angles = [-3*np.pi/8]
 
