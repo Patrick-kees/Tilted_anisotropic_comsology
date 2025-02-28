@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 import time
-import cProfile
 
 # Constants
 w = 1/3
@@ -12,7 +11,7 @@ start_time = time.time()
 
 def time_limit_event(t, y):
     # Stop after 600 seconds (10 minutes)
-    if time.time() - start_time > 6000:
+    if time.time() - start_time > 600:
         return 0
     return 1
 
@@ -56,7 +55,7 @@ def SCE(sp, sm, sc, no, v):
     return (q(sp, sm, sc, no) - 2 + 3*sp + np.sqrt(3)*sm)*sc
 
 def VE(sp, sm, sc, no, v):
-    v_tilt = tilted_velocity(sp, sm, sc, no)
+    v_tilt = v
     return v_tilt*(3*w - 1 - sp + np.sqrt(3)*sm)*(1 - v_tilt**2)/(1 - w*v_tilt**2)
 
 def system(t, y):
@@ -88,7 +87,7 @@ for phi in phi_angles:
 # Integration settings
 tf = -100
 t_span = (0, tf)
-t_eval = np.linspace(0, tf, 500000)
+t_eval = np.linspace(0, tf, 5000)
 
 # Vector field grids
 no_vals, sp_vals = np.meshgrid(np.linspace(0, np.sqrt(12), 25), np.linspace(-1, 1, 25))
@@ -166,51 +165,39 @@ ax4.grid()
 
 # Fifth subplot: Time evolution of each solution component in ax5
 # Use the first initial condition to define the colors for each component.
-handles = {}
-for i, solution in enumerate(solutions):
-    if i == 0:
-        line_sp, = ax5.plot(solution.t, solution.y[0], label="sp")
-        line_sm, = ax5.plot(solution.t, solution.y[1], label="sm")
-        line_sc, = ax5.plot(solution.t, solution.y[2], label="sc")
-        line_no, = ax5.plot(solution.t, solution.y[3], label="no")
-        line_v,  = ax5.plot(solution.t, solution.y[4], label="v")
-        handles = {"sp": line_sp, "sm": line_sm, "sc": line_sc, "no": line_no, "v": line_v}
-    else:
-        ax5.plot(solution.t, solution.y[0], color=handles["sp"].get_color())
-        ax5.plot(solution.t, solution.y[1], color=handles["sm"].get_color())
-        ax5.plot(solution.t, solution.y[2], color=handles["sc"].get_color())
-        ax5.plot(solution.t, solution.y[3], color=handles["no"].get_color())
-        ax5.plot(solution.t, solution.y[4], color=handles["v"].get_color())
-ax5.set_title("Solution Components vs Time")
+log_tilt = (solution.y[4])
+log_tilt2 = (tilted_velocity(solution.y[0], solution.y[1], solution.y[2], solution.y[3]))
+ax5.plot(solution.t, log_tilt, color='cyan', label=f"tilt from solution")
+#ax5.plot(solution.t, log_tilt2, color='red', label=f"tilt from function")
+
+ax5.set_title("Tilt vs Time")
 ax5.set_xlabel("Time")
-ax5.set_ylabel("Component values")
+ax5.set_ylabel("Tilt")
 ax5.grid()
 # Place the legend outside the plot on the right
 ax5.legend(loc='upper left', bbox_to_anchor=(1.02, 1))
 
 # Sixth subplot: Omega_fun as a function of time in ax6
-for i, solution in enumerate(solutions):
-    Omega_values = Omega_fun(solution.y[0], solution.y[1], solution.y[2], solution.y[3])
-    log_Omega = np.log10(np.abs(Omega_values))  
-    ax6.plot(solution.t, log_Omega, label=f"Density")
-ax6.set_title("Log of Density vs Time")
+F= (3*w - 1 - solution.y[0] + np.sqrt(3)*solution.y[1]) 
+ax6.plot(solution.t, F, label=f"Factor in VE")
+ax6.set_title("Factor in VE vs Time")
 ax6.set_xlabel("Time")
-ax6.set_ylabel(r"Log$_{10}$ of Density")
+ax6.set_ylabel("Factor in VE")
 ax6.grid()
 ax6.legend(loc='upper left', bbox_to_anchor=(1.02, 1))
 
 # Seventh subplot: Difference of Q3 definitions
-for i, solution in enumerate(solutions):
-    v_tilt = tilted_velocity(solution.y[0], solution.y[1], solution.y[2], solution.y[3])
-    O = Omega_fun(solution.y[0], solution.y[1], solution.y[2], solution.y[3])
-    v_def = (1+w)/(1+w*v_tilt**2)*O*v_tilt
+v_tilt = solution.y[4]
+tilt_portion=(1 - v_tilt**2)/(1 - w*v_tilt**2)
+ax7.plot(solution.t, tilt_portion, label=f"tilt portion", color='cyan')
 
-    Difference = np.abs(Q_three(solution.y[2], solution.y[3]) - v_def)
-    log_difference = np.log10(Difference)
-    ax7.plot(solution.t, log_difference, label=f"Q difference")
-ax7.set_title("Log of Difference between Qs vs Time")
+v_tilt2 = tilted_velocity(solution.y[0], solution.y[1], solution.y[2], solution.y[3])
+tilt_portion2=(1 - v_tilt2**2)/(1 - w*v_tilt2**2)
+#ax7.plot(solution.t, tilt_portion2, label=f"tilt 2 portion", color='red')
+
+ax7.set_title("tilt portion vs Time")
 ax7.set_xlabel("Time")
-ax7.set_ylabel(r"Difference in $Q_3$ definitions")
+ax7.set_ylabel("tilt portion")
 ax7.grid()
 ax7.legend(loc='upper left', bbox_to_anchor=(1.02, 1))
 
