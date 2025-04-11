@@ -20,28 +20,47 @@ def time_limit_event(t, y):
 time_limit_event.terminal = True
 
 # Model functions
-def Q_three(sc, no):
+def Q_three(params):
+    sc, no = params
     return -(no * sc) / np.sqrt(3)
 
-def Omega_fun(sp, sm, sc, sa, no):
+def Omega_fun(params):
+    sp, sm, sc, sa, no = params
     return 1 - (sp**2 + sm**2 + sc**2 +sa**2) - (no**2) / 12
 
-def tilted_velocity(sm, sc, sa, no):
-    Q = Q_three(sc, no)
+def tilted_velocity(params):
+    sm, sc, sa, no = params
+    params_q3 = [sc, no]
+
+    Q = Q_three(params_q3)
+
     A = (1 + w) * O
     B = ((1 + w)**2) * O**2
     C = 4 * w * (Q)**2
-    return (2 * Q) / (A + np.sqrt(np.abs(B - C)))
 
-def q(sm, sc, sa, no):
-    Q = Q_three(sc, no)
-    v_tilt = tilted_velocity(sm, sc, sa, no)
+    tilted_velocity = (2 * Q) / (A + np.sqrt(np.abs(B - C)))
+    return tilted_velocity
+
+def q(params):
+    sm, sc, sa, no = params
+    params_q3 = [sc, no]
+    params_v = [sm, sc, sa, no]
+
+    Q = Q_three(params_q3)
+    v_tilt = tilted_velocity(params_v)
     SigmaSquared = 1-O-(no**2)/12
-    return 2 * SigmaSquared + 0.5 * (1 + 3*w) * O + 0.5 * (1 - 3*w) * Q * v_tilt
+
+    q_val = 2 * SigmaSquared + 0.5 * (1 + 3*w) * O + 0.5 * (1 - 3*w) * Q * v_tilt
+    return q_val
 
 #Constraints
-def Constraint_1(sp, sm, sc, sa, no, v):
-    q_val = q(sp, sc, sa, no)
+    #Density evolution equation difference
+def Constraint_1(params):
+    sp, sm, sc, sa, no, v = params
+    params_q = [sm, sc, sa, no]
+    q_val = q(params_q)
+
+    O = Omega_fun(params_q)
 
     OE1 = 2*(q_val-2)*O+3*(1-w)*O+(1-3*w-sp-np.sqrt(3)*sm)*(no*sc*v)*(1/np.sqrt(3))
 
@@ -52,8 +71,14 @@ def Constraint_1(sp, sm, sc, sa, no, v):
     Difference = OE1 - OE2
 
     return Difference
+    #Q_3 equation difference
+def Constraint_2(params):
+    sp, sm, sc, sa, no, v = params
+    params_q = [sm, sc, sa, no]
+    q_val = q(params_q)
 
-def Constraint_2(sp, sm, sc, sa, no ,v):
+    O = Omega_fun(params_q)
+
     v_def = (1+w)/(1+w*v**2)*O*v
 
     Difference = np.abs(Q_three(sc,no) - v_def)
@@ -61,7 +86,12 @@ def Constraint_2(sp, sm, sc, sa, no ,v):
     return Difference
 
 #SM function (rearranged Constraint_1)
-def SM(sp, sc, sa, no, v):
+def SM(params):
+
+    sp, sc, sa, no, v = params
+    params_q = [sp, sc, sa, no]
+    q_val = q(params_q)
+
     q_val = q(sp, sc, sa, no)
     vf = (1+w)/(1+w*v**2)*(O*v)**2
 
@@ -71,35 +101,64 @@ def SM(sp, sc, sa, no, v):
     D =no*sc*v+np.sqrt(3)*(2*sc**2+vf)
     return (A+B+C)/D
 
-def SP(sm, sc, sa, no, v):
-    q_val = q(sm, sc, sa, no)
-    vf = (1+w)/(1+w*v**2)*(O*v)**2
+#SP function (rearranged Constraint_1)
+def SP(params):
+    sm, sc, sa, no = params
+    v = tilted_velocity(params)
+    params_q = [sm, sc, sa, no]
+    q_val = q(params_q)
 
+    vf = (1+w)/(1+w*v**2)*(O*v)**2
     A = 2*(2-q_val)-(no**2)/3+np.sqrt(12)*sm*sc**2
     B = np.sqrt(3)*vf*sm*(v*O)**2
     C = -3*(1-w)*O-(1-3*w-np.sqrt(3)*sm)*no*sc*v/np.sqrt(3)
     D = 12*sc**2 +vf*(O*v)**2-no*sc*v/np.sqrt(3)+4*(no**2)/3
+
     return (A+B+C)/D
 
 # Differential equations
-def NOE(sp, sm, sc, sa, no, v):
-    return (q(sm, sc, sa, no) - 4 * sp) * no
+def NOE(params):
+    sp, sm, sc, sa, no, v = params
+    params_q = [sm, sc, sa, no]
 
-def SPE(sp, sm, sc, sa, no, v):
-    Q = Q_three(sc, no)
-    return (q(sm, sc, sa, no) - 2)*sp + (no**2)/3 + 0.25*Q*v - 3*sc**2
+    return (q(params_q) - 4 * sp) * no
 
-def SME(sp, sm, sc, sa, no, v):
-    Q = Q_three(sc, no)
-    return (q(sm, sc, sa, no) - 2)*sm - np.sqrt(3)*(sc**2 - 2*sa**2 + 0.25*Q*v)
+def SPE(params):
+    sp, sm, sc, sa, no, v = params
+    params_q = [sm, sc, sa, no]
+    params_q3 = [sc, no]
 
-def SCE(sp, sm, sc, sa, no, v):
-    return (q(sm, sc, sa, no) - 2 + 3*sp + np.sqrt(3)*sm)*sc
+    Q = Q_three(params_q3)
+    q_val = q(params_q)
 
-def SAE(sp, sm, sc, sa, no, v):
-    return (q(sm, sc, sa, no) - 2 + 2*np.sqrt(3)*sm)*sa
+    return (q_val - 2)*sp + (no**2)/3 + 0.25*Q*v - 3*sc**2
 
-def VE(sp, sm, sc, sa, no, v):
+def SME(params):
+    sp, sm, sc, sa, no, v = params
+    params_q = [sm, sc, sa, no]
+    params_q3 = [sc, no]
+
+    Q = Q_three(params_q3)
+    q_val = q(params_q)
+    return (q_val - 2)*sm - np.sqrt(3)*(sc**2 - 2*sa**2 + 0.25*Q*v)
+
+def SCE(params):
+    sp, sm, sc, sa, no, v = params
+    params_q = [sm, sc, sa, no]
+    
+    q_val = q(params_q)
+    return (q_val - 2 + 3*sp + np.sqrt(3)*sm)*sc
+
+def SAE(params):
+    sp, sm, sc, sa, no, v = params
+    params_q = [sm, sc, sa, no]
+    
+    q_val = q(params_q)
+
+    return (q_val - 2 + 2*np.sqrt(3)*sm)*sa
+
+def VE(params):
+    sp, sm, sc, sa, no, v = params
     return v*(3*w - 1 - sp + np.sqrt(3)*sm)*(1 - v**2)/(1 - w*v**2)
 
 def system(t, y):
@@ -129,12 +188,17 @@ for phi in Angle1:
     SAI = R * np.sin(phi) * np.cos(Angle2)
     SCI = R * np.cos(phi)"""
 
-    SMI = R*np.cos(Angle2)
-    SAI = 0.00
-    SCI = R*np.sin(Angle2)*np.cos(Angle3)
+    SMI = -0.5
+    SCI = 0.5
+    SAI = 0
+    N1 = -4.654*10**(-6)
 
-    VI = tilted_velocity(SMI, SCI, SAI, N1)
-    SPI = SM(SMI, SCI, SAI, N1, VI)
+    initial_free_conditions = [SMI, SCI, SAI, N1]
+    
+    SPI = SP(initial_free_conditions)
+    VI = tilted_velocity(initial_free_conditions)
+
+    initial_conditions = [SPI, SMI, SCI, SAI, N1, VI]
 
     print('Here is initial tilt', VI)
     print('Here is Initial SC: ', SCI)
@@ -143,13 +207,13 @@ for phi in Angle1:
     
     print()
 
-    d1 = Constraint_1(SPI, SMI, SCI, SAI, N1, VI)
-    d2 = Constraint_2(SPI, SMI, SCI, SAI, N1, VI)
+    d1 = Constraint_1(initial_conditions)
+    d2 = Constraint_2(initial_conditions)
     
     print('Here is the difference in density equations: ', d1)
     print('Here is the difference in Q_3: ', d2)
 
-    initial_conditions_list.append([SPI, SMI, SCI, SAI, N1, VI])
+    initial_conditions_list.append(initial_conditions)
 
 # Integration settings
 tf = -15
