@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
+from scipy import optimize
 import time
 
 # Constants
@@ -25,16 +26,16 @@ def Q_three(sc, no):
 def Omega_fun(sp, sm, sc, sa, no):
     return 1 - (sp**2 + sm**2 + sc**2 +sa**2) - (no**2) / 12
 
-def tilted_velocity(sp, sc, sa, no):
+def tilted_velocity(sm, sc, sa, no):
     Q = Q_three(sc, no)
     A = (1 + w) * O
     B = ((1 + w)**2) * O**2
     C = 4 * w * (Q)**2
     return (2 * Q) / (A + np.sqrt(np.abs(B - C)))
 
-def q(sp, sc, sa, no):
+def q(sm, sc, sa, no):
     Q = Q_three(sc, no)
-    v_tilt = tilted_velocity(sp, sc, sa, no)
+    v_tilt = tilted_velocity(sm, sc, sa, no)
     SigmaSquared = 1-O-(no**2)/12
     return 2 * SigmaSquared + 0.5 * (1 + 3*w) * O + 0.5 * (1 - 3*w) * Q * v_tilt
 
@@ -70,23 +71,33 @@ def SM(sp, sc, sa, no, v):
     D =no*sc*v+np.sqrt(3)*(2*sc**2+vf)
     return (A+B+C)/D
 
+def SP(sm, sc, sa, no, v):
+    q_val = q(sm, sc, sa, no)
+    vf = (1+w)/(1+w*v**2)*(O*v)**2
+
+    A = 2*(2-q_val)-(no**2)/3+np.sqrt(12)*sm*sc**2
+    B = np.sqrt(3)*vf*sm*(v*O)**2
+    C = -3*(1-w)*O-(1-3*w-np.sqrt(3)*sm)*no*sc*v/np.sqrt(3)
+    D = 12*sc**2 +vf*(O*v)**2-no*sc*v/np.sqrt(3)+4*(no**2)/3
+    return (A+B+C)/D
+
 # Differential equations
 def NOE(sp, sm, sc, sa, no, v):
-    return (q(sp, sc, sa, no) - 4 * sp) * no
+    return (q(sm, sc, sa, no) - 4 * sp) * no
 
 def SPE(sp, sm, sc, sa, no, v):
     Q = Q_three(sc, no)
-    return (q(sp, sc, sa, no) - 2)*sp + (no**2)/3 + 0.25*Q*v - 3*sc**2
+    return (q(sm, sc, sa, no) - 2)*sp + (no**2)/3 + 0.25*Q*v - 3*sc**2
 
 def SME(sp, sm, sc, sa, no, v):
     Q = Q_three(sc, no)
-    return (q(sp, sc, sa, no) - 2)*sm - np.sqrt(3)*(sc**2 - 2*sa**2 + 0.25*Q*v)
+    return (q(sm, sc, sa, no) - 2)*sm - np.sqrt(3)*(sc**2 - 2*sa**2 + 0.25*Q*v)
 
 def SCE(sp, sm, sc, sa, no, v):
-    return (q(sp, sc, sa, no) - 2 + 3*sp + np.sqrt(3)*sm)*sc
+    return (q(sm, sc, sa, no) - 2 + 3*sp + np.sqrt(3)*sm)*sc
 
 def SAE(sp, sm, sc, sa, no, v):
-    return (q(sp, sc, sa, no) - 2 + 2*np.sqrt(3)*sm)*sa
+    return (q(sm, sc, sa, no) - 2 + 2*np.sqrt(3)*sm)*sa
 
 def VE(sp, sm, sc, sa, no, v):
     return v*(3*w - 1 - sp + np.sqrt(3)*sm)*(1 - v**2)/(1 - w*v**2)
@@ -108,8 +119,8 @@ N1 = 0.1*N1_max
 R = np.sqrt(1-O-(N1**2)/12)
 print("Is the radius valid", R)
 Angle1 = [-1*np.pi/8]
-Angle2 = np.arccos(0.1)
-Angle3 = 0.5*np.pi+0.1
+Angle2 = np.arccos(-0.8)
+Angle3 = 0
 
 initial_conditions_list = []
 for phi in Angle1:
@@ -118,12 +129,12 @@ for phi in Angle1:
     SAI = R * np.sin(phi) * np.cos(Angle2)
     SCI = R * np.cos(phi)"""
 
-    SPI = R*np.sin(Angle2)*np.cos(Angle3)
+    SMI = R*np.cos(Angle2)
     SAI = 0.00
-    SCI = R*np.cos(Angle2)
+    SCI = R*np.sin(Angle2)*np.cos(Angle3)
 
-    VI = tilted_velocity(SPI, SCI, SAI, N1)
-    SMI = SM(SPI, SCI, SAI, N1, VI)
+    VI = tilted_velocity(SMI, SCI, SAI, N1)
+    SPI = SM(SMI, SCI, SAI, N1, VI)
 
     print('Here is initial tilt', VI)
     print('Here is Initial SC: ', SCI)
