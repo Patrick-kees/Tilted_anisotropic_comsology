@@ -5,8 +5,8 @@ from scipy import optimize
 import time
 
 # Constants
-w = 1/3 #speed of sound sqaured
-O = 0.025 #Hubble normalized density of the universe
+w = 1/3  #speed of sound sqaured
+O = 0.15 #Hubble normalized density of the universe
 
 # Start the timer for the event
 start_time = time.time()
@@ -29,11 +29,12 @@ def Omega_fun(params):
     return 1 - (sp**2 + sm**2 + sc**2 +sa**2) - (no**2) / 12
 
 def tilted_velocity(params):
-    sm, sc, sa, no = params
+    sp, sm, sc, sa, no = params
     params_q3 = [sc, no]
 
     Q = Q_three(params_q3)
-
+    O = Omega_fun(params)
+    
     A = (1 + w) * O
     B = ((1 + w)**2) * O**2
     C = 4 * w * (Q)**2
@@ -42,13 +43,14 @@ def tilted_velocity(params):
     return tilted_velocity
 
 def q(params):
-    sm, sc, sa, no = params
+    sp, sm, sc, sa, no = params
     params_q3 = [sc, no]
-    params_v = [sm, sc, sa, no]
 
     Q = Q_three(params_q3)
-    v_tilt = tilted_velocity(params_v)
-    SigmaSquared = 1-O-(no**2)/12
+    v_tilt = tilted_velocity(params)
+    O = Omega_fun(params)
+
+    SigmaSquared = sp**2+sm**2+sc**2+sa**2
 
     q_val = 2 * SigmaSquared + 0.5 * (1 + 3*w) * O + 0.5 * (1 - 3*w) * Q * v_tilt
     return q_val
@@ -57,9 +59,9 @@ def q(params):
     #Density evolution equation difference
 def Constraint_1(params):
     sp, sm, sc, sa, no, v = params
-    params_q = [sm, sc, sa, no]
-    q_val = q(params_q)
+    params_q = [sp, sm, sc, sa, no]
 
+    q_val = q(params_q)
     O = Omega_fun(params_q)
 
     OE1 = 2*(q_val-2)*O+3*(1-w)*O+(1-3*w-sp-np.sqrt(3)*sm)*(no*sc*v)*(1/np.sqrt(3))
@@ -74,18 +76,20 @@ def Constraint_1(params):
     #Q_3 equation difference
 def Constraint_2(params):
     sp, sm, sc, sa, no, v = params
-    params_q = [sm, sc, sa, no]
-    q_val = q(params_q)
+    params_q = [sp, sm, sc, sa, no]
+    params_O = [sp, sm, sc, sa, no]
+    params_q3 = [sc, no]
 
-    O = Omega_fun(params_q)
+    q_val = q(params_q)
+    O = Omega_fun(params_O)
 
     v_def = (1+w)/(1+w*v**2)*O*v
 
-    Difference = np.abs(Q_three(sc,no) - v_def)
+    Difference = np.abs(Q_three(params_q3) - v_def)
 
     return Difference
 
-#SM function (rearranged Constraint_1)
+"""#SM function (rearranged Constraint_1)
 def SM(params):
 
     sp, sc, sa, no, v = params
@@ -114,18 +118,18 @@ def SP(params):
     C = -3*(1-w)*O-(1-3*w-np.sqrt(3)*sm)*no*sc*v/np.sqrt(3)
     D = 12*sc**2 +vf*(O*v)**2-no*sc*v/np.sqrt(3)+4*(no**2)/3
 
-    return (A+B+C)/D
+    return (A+B+C)/D"""
 
 # Differential equations
 def NOE(params):
     sp, sm, sc, sa, no, v = params
-    params_q = [sm, sc, sa, no]
+    params_q = [sp, sm, sc, sa, no]
 
     return (q(params_q) - 4 * sp) * no
 
 def SPE(params):
     sp, sm, sc, sa, no, v = params
-    params_q = [sm, sc, sa, no]
+    params_q = [sp, sm, sc, sa, no]
     params_q3 = [sc, no]
 
     Q = Q_three(params_q3)
@@ -135,7 +139,7 @@ def SPE(params):
 
 def SME(params):
     sp, sm, sc, sa, no, v = params
-    params_q = [sm, sc, sa, no]
+    params_q = [sp, sm, sc, sa, no]
     params_q3 = [sc, no]
 
     Q = Q_three(params_q3)
@@ -144,14 +148,14 @@ def SME(params):
 
 def SCE(params):
     sp, sm, sc, sa, no, v = params
-    params_q = [sm, sc, sa, no]
+    params_q = [sp, sm, sc, sa, no]
     
     q_val = q(params_q)
     return (q_val - 2 + 3*sp + np.sqrt(3)*sm)*sc
 
 def SAE(params):
     sp, sm, sc, sa, no, v = params
-    params_q = [sm, sc, sa, no]
+    params_q = [sp, sm, sc, sa, no]
     
     q_val = q(params_q)
 
@@ -164,12 +168,12 @@ def VE(params):
 def system(t, y):
     sp, sm, sc, sa, no, v = y
     return [
-        SPE(sp, sm, sc, sa, no, v),
-        SME(sp, sm, sc, sa, no, v),
-        SCE(sp, sm, sc, sa, no, v),
-        SAE(sp, sm, sc, sa, no, v),
-        NOE(sp, sm, sc, sa, no, v),
-        VE(sp, sm, sc, sa, no, v)
+        SPE(y),
+        SME(y),
+        SCE(y),
+        SAE(y),
+        NOE(y),
+        VE(y)
     ]
 
 # Initial conditions
@@ -177,8 +181,8 @@ N1_max = 2*np.sqrt(3)
 N1 = 0.1*N1_max
 R = np.sqrt(1-O-(N1**2)/12)
 print("Is the radius valid", R)
-Angle1 = [-1*np.pi/8]
-Angle2 = np.arccos(-0.8)
+Angle1 = [np.arccos(-0.7)]
+Angle2 = np.arccos(0.5)
 Angle3 = 0
 
 initial_conditions_list = []
@@ -188,30 +192,36 @@ for phi in Angle1:
     SAI = R * np.sin(phi) * np.cos(Angle2)
     SCI = R * np.cos(phi)"""
 
-    SMI = -0.5
+    SMI = R*np.cos(phi)
+    SPI = R*np.sin(phi)*np.cos(Angle2)
+    SCI = R*np.sin(phi)*np.sin(Angle2)
+    SAI=0
+
+    """SMI = -0.5
     SCI = 0.5
     SAI = 0
-    N1 = -4.654*10**(-6)
+    #N1 = -4.654*10**(-6)
+    N1=-0.05"""
 
-    initial_free_conditions = [SMI, SCI, SAI, N1]
+    initial_free_conditions = [SPI, SMI, SCI, SAI, N1]
     
-    SPI = SP(initial_free_conditions)
+    #SPI = SP(initial_free_conditions)
     VI = tilted_velocity(initial_free_conditions)
 
     initial_conditions = [SPI, SMI, SCI, SAI, N1, VI]
 
-    print('Here is initial tilt', VI)
-    print('Here is Initial SC: ', SCI)
-    print('Here is Initial NI: ', N1)
-    print('Here is Initial Q_3: ', -N1*SCI/np.sqrt(3))
+    print('Initial tilt', VI)
+    print('Initial SC: ', SCI)
+    print('Initial NI: ', N1)
+    print('Initial Q_3: ', -N1*SCI/np.sqrt(3))
     
     print()
 
     d1 = Constraint_1(initial_conditions)
     d2 = Constraint_2(initial_conditions)
     
-    print('Here is the difference in density equations: ', d1)
-    print('Here is the difference in Q_3: ', d2)
+    print('The initial difference in density equations: ', d1)
+    print('The initial difference in Q_3: ', d2)
 
     initial_conditions_list.append(initial_conditions)
 
@@ -221,30 +231,30 @@ t_span = (0, tf)
 t_eval = np.linspace(0, tf, 50000)
 
 # Vector field grids
-no_vals, sp_vals = np.meshgrid(np.linspace(0, np.sqrt(12), 25), np.linspace(-1, 1, 25))
+no_vals, sp_vals = np.meshgrid(np.linspace(-np.sqrt(12), np.sqrt(12), 25), np.linspace(-1, 1, 25))
 sm_vals, sc_vals = np.meshgrid(np.linspace(-1, 1, 25), np.linspace(-1, 1, 25))
 
 # Precompute vector field values
-NOE_of_SPE_vals = NOE(sp_vals, 0, 0, 0, no_vals, 0)
-SPE_of_NOE_vals = SPE(sp_vals, 0, 0, 0, no_vals, 0)
-SPE_of_SME_vals = SPE(sp_vals, sm_vals, 0, 0, 0, 0) 
-SME_of_SPE_vals = SME(sp_vals, sm_vals, 0, 0, 0, 0)
-NOE_of_SME_vals = NOE(0, sm_vals, 0, 0, no_vals, 0)
-SME_of_NOE_vals = SME(0, sm_vals, 0, 0, no_vals, 0)
-NOE_of_SCE_vals = NOE(0, 0, sc_vals, 0, no_vals, 0)
-SCE_of_NOE_vals = SCE(0, 0, sc_vals, 0, no_vals, 0)
-SPE_of_SCE_vals = SPE(sp_vals, 0, sc_vals, 0, 0, 0)
-SCE_of_SPE_vals = SCE(sp_vals, 0, sc_vals, 0, 0, 0)
-SME_of_SCE_vals = SME(0, sm_vals, sc_vals, 0, 0, 0)
-SCE_of_SME_vals = SCE(0, sm_vals, sc_vals, 0, 0, 0)
+NOE_of_SPE_vals = NOE([sp_vals, 0, 0, 0, no_vals, 0])
+SPE_of_NOE_vals = SPE([sp_vals, 0, 0, 0, no_vals, 0])
+SPE_of_SME_vals = SPE([sp_vals, sm_vals, 0, 0, 0, 0]) 
+SME_of_SPE_vals = SME([sp_vals, sm_vals, 0, 0, 0, 0])
+NOE_of_SME_vals = NOE([0, sm_vals, 0, 0, no_vals, 0])
+SME_of_NOE_vals = SME([0, sm_vals, 0, 0, no_vals, 0])
+NOE_of_SCE_vals = NOE([0, 0, sc_vals, 0, no_vals, 0])
+SCE_of_NOE_vals = SCE([0, 0, sc_vals, 0, no_vals, 0])
+SPE_of_SCE_vals = SPE([sp_vals, 0, sc_vals, 0, 0, 0])
+SCE_of_SPE_vals = SCE([sp_vals, 0, sc_vals, 0, 0, 0])
+SME_of_SCE_vals = SME([0, sm_vals, sc_vals, 0, 0, 0])
+SCE_of_SME_vals = SCE([0, sm_vals, sc_vals, 0, 0, 0])
 
 # Solve the system once for each initial condition and store the results
-solutions = [solve_ivp(system, t_span, ic, t_eval=t_eval, events=time_limit_event, method='LSODA') for ic in initial_conditions_list]
+solutions = [solve_ivp(system, t_span, ic, t_eval=t_eval, events=time_limit_event, method='RK45') for ic in initial_conditions_list]
 
 print()
 N = 1
 # After solving the system, print the first value of each variable for each solution
-for i, solution in enumerate(solutions):
+"""for i, solution in enumerate(solutions):
     print(f"Initial values for solution {i + 1}:")
     print(f"sp: {solution.y[0][0]}")
     print(f"sm: {solution.y[1][0]}")
@@ -253,9 +263,9 @@ for i, solution in enumerate(solutions):
     print(f"no: {solution.y[4][0]}")
     print(f"v: {solution.y[5][0]}")
     print()
-    print(f"Constraint on density evolution equations at step {N}: {Constraint_1(solution.y[0][N], solution.y[1][N], solution.y[2][N], solution.y[3][N], solution.y[4][N], solution.y[5][N])}")
-    print(f"Constraint on Q3 at step {N}: {Constraint_2(solution.y[0][N], solution.y[1][N], solution.y[2][N], solution.y[3][N], solution.y[4][N], solution.y[5][N])}")
-    print()
+    print(f"Constraint on density evolution equations at step {N}: {Constraint_1(solution.y[N]0")
+    print(f"Constraint on Q3 at step {N}: {Constraint_2(solution.y[N], solution.y[1][N], solution.y[2][N], solution.y[3][N], solution.y[4][N], solution.y[5][N])}")
+    print()"""
 
 # Create a figure with GridSpec to accommodate 5 subplots
 fig = plt.figure(figsize=(14, 32))
@@ -339,7 +349,7 @@ ax5.legend(loc='upper left', bbox_to_anchor=(1.02, 1))
 
 # Sixth subplot: Omega_fun as a function of time in ax6
 for i, solution in enumerate(solutions):
-    Omega_values = Omega_fun(solution.y[0], solution.y[1], solution.y[2], solution.y[3], solution.y[4])
+    Omega_values = Omega_fun(solution.y[0:5])
     log_Omega = np.log10(np.abs(Omega_values))  
     ax6.plot(solution.t, log_Omega, label=f"Density")
 ax6.set_title("Log of Density vs Time")
@@ -350,10 +360,11 @@ ax6.legend(loc='upper left', bbox_to_anchor=(1.02, 1))
 
 # Seventh subplot: Difference of Q3 definitions
 for i, solution in enumerate(solutions):
-    v_tilt = tilted_velocity(solution.y[0], solution.y[2], solution.y[3], solution.y[4])
+    O = Omega_fun(solution.y[0:5])
+    v_tilt = tilted_velocity(solution.y[0:5])
     v_def = (1+w)/(1+w*v_tilt**2)*O*v_tilt
-
-    Difference = np.abs(Q_three(solution.y[2], solution.y[3]) - v_def)
+    
+    Difference = np.abs(Q_three([solution.y[2], solution.y[4]]) - v_def)
     print(Difference)
     log_difference = np.log10(np.abs(Difference))
     ax7.plot(solution.t, log_difference, label=f"Q difference")
@@ -372,7 +383,8 @@ for i, solution in enumerate(solutions):
     no = solution.y[4]
     v = solution.y[5]
 
-    q_val = q(sp, sc, sa, no)
+    q_val = q([sp, sm, sc, sa, no])
+    O = Omega_fun([sp, sm, sc, sa, no])
 
     OE1 = 2*(q_val-2)*O+3*(1-w)*O+(1-3*w-sp-np.sqrt(3)*sm)*(no*sc*v)*(1/np.sqrt(3))
 
