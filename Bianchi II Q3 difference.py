@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
+from scipy.integrate._ivp.ivp import OdeResult
 from scipy import optimize
 import time
 
@@ -251,11 +252,28 @@ SME_of_SCE_vals = SME([0, sm_vals, sc_vals, 0, 0, 0])
 SCE_of_SME_vals = SCE([0, sm_vals, sc_vals, 0, 0, 0])
 
 #Solve settings
-max_step=10**(-7)
+max_step_1=10**(-6)
+max_step_2=10**(-7)
+
 abs_error = 10**(-15)
-print("Absolute error tolerance: ", abs_error, "Max step size: ", max_step)
+print("Absolute error tolerance: ", abs_error, " Max step size 1: ", max_step_1, " Max step size 2: ", max_step_2)
 # Solve the system once for each initial condition and store the results
-solutions = [solve_ivp(system, t_span, ic, t_eval=t_eval, events=time_limit_event, method='RK45', first_step=10**(-8), atol=abs_error, max_step=max_step) for ic in initial_conditions_list]
+solutions1 = [solve_ivp(system, t_span, ic, t_eval=t_eval, events=time_limit_event, method='RK45', first_step=10**(-8), atol=abs_error, max_step=max_step_1) for ic in initial_conditions_list]
+solutions2 = [solve_ivp(system, t_span, ic, t_eval=t_eval, events=time_limit_event, method='RK45', first_step=10**(-8), atol=abs_error, max_step=max_step_2) for ic in initial_conditions_list]
+
+# Calculate the difference between the two solutions as a solution object
+solutions = [
+    OdeResult({
+        't': solutions1.t,
+        'y': np.abs(solutions2.y - solutions1.y),
+        't_events': None,
+        'y_events': None,
+        'sol': None,
+        'success': solutions1.success and solutions2.success,
+        'message': 'Difference between solution2 and solution1'
+    })
+    for solutions1, solutions2 in zip(solutions1, solutions2)
+]
 
 print()
 N = 1
